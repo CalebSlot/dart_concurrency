@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
-import 'package:async/async.dart';
 import 'package:sprintf/sprintf.dart';
 
 class Instruction
@@ -12,14 +11,6 @@ class Instruction
   final String api;
   final SendPort responsePort;
   const Instruction(this.code,this.api,this.responsePort);
-
-}
-
-class Result
-{
-  final int code;
-  final Object value;
-  const Result(this.code,this.value);
 
 }
 
