@@ -7,28 +7,30 @@ import 'dart:isolate';
 import 'package:async/async.dart';
 import 'package:sprintf/sprintf.dart';
 
-class Command
+
+class Sender
+{
+  const Sender();
+  void send(SendPort? sendPort)
+  {
+    sendPort?.send(this);
+  }
+}
+
+// ignore: non_constant_identifier_names
+class Command extends Sender
 {
   final int code;
   final String? api;
   final SendPort responsePort;
   const Command(this.code,this.responsePort,[this.api]);
-  void send(SendPort? sendPort)
-  {
-    sendPort?.send(this);
-  }
-  
   
 }
-class Response
+class Response extends Sender
 {
   final int code;
   final Object? value;
   const Response(this.code,this.value);
-  void send(SendPort? sendPort)
-  {
-    sendPort?.send(this);
-  }
 }
 
 class CityCord 
