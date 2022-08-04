@@ -13,14 +13,11 @@ class Command
   final String? api;
   final SendPort responsePort;
   const Command(this.code,this.responsePort,[this.api]);
-  void send(SendPort sendPort,Object? message)
+  void send(SendPort? sendPort)
   {
-    sendPort.send(message);
+    sendPort?.send(this);
   }
-  void reply(Object? message)
-  {
-    responsePort.send(message);
-  }
+  
   
 }
 class Response
@@ -28,6 +25,10 @@ class Response
   final int code;
   final Object? value;
   const Response(this.code,this.value);
+  void send(SendPort? sendPort)
+  {
+    sendPort?.send(this);
+  }
 }
 
 class CityCord 
@@ -55,7 +56,7 @@ void main(List<String> arguments) async
 
 //ISOLATE
   final mainReceivePort = ReceivePort();
-  final exitPort = ReceivePort();
+  final exitPort        = ReceivePort();
 
   Isolate.spawn(workerDeserializeNetworkCall, mainReceivePort.sendPort,onExit: exitPort.sendPort);
 
@@ -73,7 +74,7 @@ void main(List<String> arguments) async
     if(response.code == -1)
     {
       childSendPort = response.value as SendPort;
-      childSendPort.send(Command(0,mainReceivePort.sendPort,apiCallCityCoord));
+      Command(0,mainReceivePort.sendPort,apiCallCityCoord).send(childSendPort);
       continue;
     }
     if(response.code == 0)
@@ -87,7 +88,7 @@ void main(List<String> arguments) async
          String latS = rovereto.lat.toString();
          String lonS = rovereto.lon.toString();
          apiCallMeteoCoord = sprintf(apiCallMeteoCoordTemplate,[latS,lonS]);
-         childSendPort?.send(Command(1,mainReceivePort.sendPort,apiCallMeteoCoord));
+         Command(1,mainReceivePort.sendPort,apiCallMeteoCoord).send(childSendPort);
      }
       continue;
     }
@@ -95,7 +96,7 @@ void main(List<String> arguments) async
     {
       var meteo = response.value as Map<String,dynamic>;
       print(meteo);
-      childSendPort?.send(Command(-2,mainReceivePort.sendPort));
+      Command(-2,mainReceivePort.sendPort).send(childSendPort);
       continue;
     }
   }
@@ -119,7 +120,7 @@ Future<http.Response> fetchFutureData(String uri) {
 Future<void> workerDeserializeNetworkCall(SendPort mainSendPort) async
 {
   final commandPort = ReceivePort();
-  mainSendPort.send(Response(-1,commandPort.sendPort));
+  Response(-1,commandPort.sendPort).send(mainSendPort);
 
   
   await for(var message in commandPort)
@@ -127,7 +128,7 @@ Future<void> workerDeserializeNetworkCall(SendPort mainSendPort) async
 
  if (message.code == -2) 
     {
-       message.reply(Response(message.code,"GOODBYE!"));
+       Response(message.code,"GOODBYE!").send(message.responsePort);
        Isolate.exit();
     }
 
@@ -143,7 +144,7 @@ Future<void> workerDeserializeNetworkCall(SendPort mainSendPort) async
     cityCord =  CityCord.fromJson(jsonresponses[0]);
   }
   
-  message.reply(Response(message.code,cityCord));
+  Response(message.code,cityCord).send(message.responsePort);
   continue;
   }
 
@@ -159,8 +160,9 @@ Future<void> workerDeserializeNetworkCall(SendPort mainSendPort) async
           meteoMap = jsonDecode(meteoAtCordResponse.body);
      }
 
-    message.reply(Response(message.code,meteoMap));
+    Response(message.code,meteoMap).send(message.responsePort);
     continue;
+    
   }
    
   //Isolate.exit(p,cityCord);
